@@ -2,7 +2,7 @@ fn main()
 {
     let tokens = tokenize("4+ 26/ (8- 2)^  4");
     println!("{:?}", tokens);
-    println!("{:?}", infixToPostfix(tokens));
+    println!("{:?}", infix_to_postfix(tokens));
 }
 
 fn tokenize(string: &str) -> Vec<Token>
@@ -59,50 +59,50 @@ fn tokenize(string: &str) -> Vec<Token>
     tokens
 }
 
-fn infixToPostfix(mut infixTokens: Vec<Token>) -> Vec<Token>
+fn infix_to_postfix(mut infix_tokens: Vec<Token>) -> Vec<Token>
 {
-    let mut postfixTokens: Vec<Token> = Vec::new();
-    let mut opStack: Vec<Token> = Vec::new();
+    let mut postfix_tokens: Vec<Token> = Vec::new();
+    let mut op_stack: Vec<Token> = Vec::new();
 
-    for token in infixTokens.drain(..)
+    for token in infix_tokens.drain(..)
     {
         match token
         {
-            Token::Number { .. } => postfixTokens.push(token),
-            Token::LSep => opStack.push(token),
+            Token::Number { .. } => postfix_tokens.push(token),
+            Token::LSep => op_stack.push(token),
             Token::RSep =>
             {
                 loop
                 {
-                    let curToken = opStack
+                    let cur_token = op_stack
                         .pop()
                         .expect("tried to pop an operator off the stack when empty");
 
-                    if curToken == Token::LSep
+                    if cur_token == Token::LSep
                     {
                         break;
                     }
                     else
                     {
-                        postfixTokens.push(curToken);
+                        postfix_tokens.push(cur_token);
                     }
                 }
             }
             Token::Operator { .. } =>
             {
-                if opStack.len() == 0 || opStack.last().unwrap() == &Token::LSep
+                if op_stack.is_empty() || op_stack.last().unwrap() == &Token::LSep
                 {
-                    opStack.push(token)
+                    op_stack.push(token)
                 }
                 else
                 {
-                    let curOp = match token
+                    let cur_op = match token
                     {
                         Token::Operator { ref op } => op,
                         _ => panic!("token {:?} is not an operator", token),
                     };
 
-                    let stackOp = match opStack
+                    let stack_op = match op_stack
                         .last()
                         .expect("tried to pop operator off empty opStack")
                     {
@@ -110,50 +110,50 @@ fn infixToPostfix(mut infixTokens: Vec<Token>) -> Vec<Token>
                         _ => panic!("token {:?} is not an operator", token),
                     };
 
-                    if (curOp.precedence() > stackOp.precedence())
-                        || (curOp.precedence() == stackOp.precedence()
-                            && curOp.associativity() == Associativity::Right)
+                    if (cur_op.precedence() > stack_op.precedence())
+                        || (cur_op.precedence() == stack_op.precedence()
+                            && cur_op.associativity() == Associativity::Right)
                     {
-                        opStack.push(token)
+                        op_stack.push(token)
                     }
                     else
                     {
-                        while opStack.len() != 0
-                            && curOp.precedence()
-                                < match opStack.last().unwrap()
+                        while !op_stack.is_empty()
+                            && cur_op.precedence()
+                                < match op_stack.last().unwrap()
                                 {
                                     Token::Operator { op } => op,
                                     tok => panic!("token {:?} is not an operator", tok),
                                 }
                                 .precedence()
-                            || (curOp.precedence()
-                                == match opStack.last().unwrap()
+                            || (cur_op.precedence()
+                                == match op_stack.last().unwrap()
                                 {
                                     Token::Operator { op } => op,
                                     tok => panic!("token {:?} is not an operator", tok),
                                 }
                                 .precedence()
-                                && curOp.associativity() == Associativity::Left)
+                                && cur_op.associativity() == Associativity::Left)
                         {
-                            postfixTokens.push(
-                                opStack
+                            postfix_tokens.push(
+                                op_stack
                                     .pop()
                                     .expect("tried to pop operator off empty opStack"),
                             );
                         }
-                        opStack.push(token);
+                        op_stack.push(token);
                     }
                 }
             }
         }
     }
 
-    while opStack.len() != 0
+    while !op_stack.is_empty()
     {
-        postfixTokens.push(opStack.pop().unwrap());
+        postfix_tokens.push(op_stack.pop().unwrap());
     }
 
-    postfixTokens
+    postfix_tokens
 }
 
 #[derive(Debug, PartialEq)]
@@ -175,6 +175,7 @@ enum Operation
 
 impl Operation
 {
+    /*
     fn str(&self) -> String
     {
         match self
@@ -186,6 +187,7 @@ impl Operation
             Self::Exponentiation => "^".to_string(),
         }
     }
+    */
 
     fn precedence(&self) -> i32
     {
@@ -243,11 +245,6 @@ mod tests
         };
     }
 
-    fn make_num(value: i32) -> Token
-    {
-        Token::Number { val: value.to_string() }
-    }
-
     fn make_token(string: &str) -> Token
     {
         match string
@@ -293,10 +290,10 @@ mod tests
     {
         let infix_tokens: Vec<Token> = create_tokens!["5"];
         let postfix_tokens: Vec<Token> = create_tokens!["5"];
-        assert_eq!(infixToPostfix(infix_tokens), postfix_tokens);
+        assert_eq!(infix_to_postfix(infix_tokens), postfix_tokens);
 
-        let infixTokens: Vec<Token> = create_tokens!["5", "+", "3"];
-        let postfixTokens: Vec<Token> = create_tokens!["5", "3", "+"];
-        assert_eq!(infixToPostfix(infixTokens), postfixTokens);
+        let infix_tokens: Vec<Token> = create_tokens!["5", "+", "3"];
+        let postfix_tokens: Vec<Token> = create_tokens!["5", "3", "+"];
+        assert_eq!(infix_to_postfix(infix_tokens), postfix_tokens);
     }
 }
