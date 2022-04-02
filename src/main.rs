@@ -2,6 +2,7 @@ fn main()
 {
     let tokens = tokenize("4+ 26/ (8- 2)^  4");
     println!("{:?}", tokens);
+    println!("{:?}", infixToPostfix(tokens));
 }
 
 fn tokenize(string: &str) -> Vec<Token>
@@ -24,17 +25,33 @@ fn tokenize(string: &str) -> Vec<Token>
             {
                 j += 1;
             }
-            let token = Token {
-                data: String::from(&string[i..j]),
+            let token = Token::Number {
+                val: String::from(&string[i..j]),
             };
             tokens.push(token);
             i = j - 1;
         }
+        else if chars[i] == '('
+        {
+            tokens.push(Token::LSep);
+        }
+        else if chars[i] == ')'
+        {
+            tokens.push(Token::RSep);
+        }
         else
         {
-            tokens.push(Token {
-                data: String::from(chars[i]),
-            })
+            tokens.push(Token::Operator {
+                op: match chars[i]
+                {
+                    '+' => Operation::Addition,
+                    '-' => Operation::Subtraction,
+                    '*' => Operation::Multiplication,
+                    '/' => Operation::Division,
+                    '^' => Operation::Exponentiation,
+                    _ => panic!("unknown operator: {}", chars[i]),
+                },
+            });
         }
         i += 1;
     }
@@ -42,18 +59,18 @@ fn tokenize(string: &str) -> Vec<Token>
     tokens
 }
 
-fn infixToPostfix(mut infixTokens: Vec<TokenType>) -> Vec<TokenType>
+fn infixToPostfix(mut infixTokens: Vec<Token>) -> Vec<Token>
 {
-    let mut postfixTokens: Vec<TokenType> = Vec::new();
-    let mut opStack: Vec<TokenType> = Vec::new();
+    let mut postfixTokens: Vec<Token> = Vec::new();
+    let mut opStack: Vec<Token> = Vec::new();
 
     for token in infixTokens.drain(..)
     {
         match token
         {
-            TokenType::Number { .. } => postfixTokens.push(token),
-            TokenType::Operator { ref op } if op.str() == "(" => opStack.push(token),
-            TokenType::Operator { ref op } if op.str() == ")" =>
+            Token::Number { .. } => postfixTokens.push(token),
+            Token::LSep => opStack.push(token),
+            Token::RSep =>
             {
                 loop
                 {
@@ -61,24 +78,19 @@ fn infixToPostfix(mut infixTokens: Vec<TokenType>) -> Vec<TokenType>
                         .pop()
                         .expect("tried to pop an operator off the stack when empty");
 
-                    match curToken
+                    if curToken == Token::LSep
                     {
-                        TokenType::Operator { op: stackOp } if stackOp.str() == "(" => break,
-                        _ => (postfixTokens.push(curToken)),
+                        break;
+                    }
+                    else
+                    {
+                        postfixTokens.push(curToken);
                     }
                 }
             }
-            TokenType::Operator { .. } =>
+            Token::Operator { .. } =>
             {
-                if opStack.len() == 0
-                    || match opStack.last().unwrap()
-                    {
-                        TokenType::Operator { ref op } => op.str(),
-                        _ => panic!(
-                            "operator stack contains non-operator token: {:?}",
-                            opStack.last().unwrap()
-                        ),
-                    } == "("
+                if opStack.len() == 0 || opStack.last().unwrap() == &Token::LSep
                 {
                     opStack.push(token)
                 }
@@ -86,7 +98,7 @@ fn infixToPostfix(mut infixTokens: Vec<TokenType>) -> Vec<TokenType>
                 {
                     let curOp = match token
                     {
-                        TokenType::Operator { ref op } => op,
+                        Token::Operator { ref op } => op,
                         _ => panic!("token {:?} is not an operator", token),
                     };
 
@@ -94,7 +106,7 @@ fn infixToPostfix(mut infixTokens: Vec<TokenType>) -> Vec<TokenType>
                         .last()
                         .expect("tried to pop operator off empty opStack")
                     {
-                        TokenType::Operator { op } => op,
+                        Token::Operator { op } => op,
                         _ => panic!("token {:?} is not an operator", token),
                     };
 
@@ -110,14 +122,14 @@ fn infixToPostfix(mut infixTokens: Vec<TokenType>) -> Vec<TokenType>
                             && curOp.precedence()
                                 < match opStack.last().unwrap()
                                 {
-                                    TokenType::Operator { op } => op,
+                                    Token::Operator { op } => op,
                                     tok => panic!("token {:?} is not an operator", tok),
                                 }
                                 .precedence()
                             || (curOp.precedence()
                                 == match opStack.last().unwrap()
                                 {
-                                    TokenType::Operator { op } => op,
+                                    Token::Operator { op } => op,
                                     tok => panic!("token {:?} is not an operator", tok),
                                 }
                                 .precedence()
@@ -199,23 +211,20 @@ impl Operation
 }
 
 #[derive(Debug, PartialEq)]
-enum TokenType
+enum Token
 {
     Number
     {
-        val: String
+        val: String,
     },
 
     Operator
     {
-        op: Operation
+        op: Operation,
     },
-}
 
-#[derive(Debug, PartialEq)]
-struct Token
-{
-    data: String,
+    LSep,
+    RSep,
 }
 
 #[cfg(test)]
@@ -228,18 +237,39 @@ mod tests
         ($($token:literal),*) => {
             vec![
             $(
-                Token{
-                    data: $token.to_string(),
-                },
+                make_token($token),
             )*
             ]
         };
     }
 
+    fn make_num(value: i32) -> Token
+    {
+        Token::Number { val: value.to_string() }
+    }
+
+    fn make_token(string: &str) -> Token
+    {
+        match string
+        {
+            "+" => Token::Operator{op: Operation::Addition},
+            "-" => Token::Operator{op: Operation::Subtraction},
+            "*" => Token::Operator{op: Operation::Multiplication},
+            "/" => Token::Operator{op: Operation::Division},
+            "^" => Token::Operator{op: Operation::Exponentiation},
+
+            "(" => Token::LSep,
+            ")" => Token::RSep,
+
+            number => Token::Number{val: number.to_string()},
+
+        }
+    }
+
     #[test]
     fn test_tokenizer()
     {
-        let tokens: Vec<Token> =
+        let tokens: Vec<Token> = 
             create_tokens!["4", "+", "26", "/", "(", "8", "-", "2", ")", "^", "4"];
 
         let test1 = tokenize("4   +  26  /    (8-   2)  ^   4");
@@ -261,38 +291,12 @@ mod tests
     #[test]
     fn test_infix_to_postfix()
     {
-        let infixTokens: Vec<TokenType> = vec![TokenType::Number {
-            val: "5".to_string(),
-        }];
-        assert_eq!(
-            infixToPostfix(infixTokens),
-            vec![TokenType::Number {
-                val: "5".to_string()
-            }]
-        );
+        let infix_tokens: Vec<Token> = create_tokens!["5"];
+        let postfix_tokens: Vec<Token> = create_tokens!["5"];
+        assert_eq!(infixToPostfix(infix_tokens), postfix_tokens);
 
-        let infixTokens: Vec<TokenType> = vec![
-            TokenType::Number {
-                val: "5".to_string(),
-            },
-            TokenType::Operator {
-                op: Operation::Addition,
-            },
-            TokenType::Number {
-                val: "3".to_string(),
-            },
-        ];
-        let postfixTokens: Vec<TokenType> = vec![
-            TokenType::Number {
-                val: "5".to_string(),
-            },
-            TokenType::Number {
-                val: "3".to_string(),
-            },
-            TokenType::Operator {
-                op: Operation::Addition,
-            },
-        ];
+        let infixTokens: Vec<Token> = create_tokens!["5", "+", "3"];
+        let postfixTokens: Vec<Token> = create_tokens!["5", "3", "+"];
         assert_eq!(infixToPostfix(infixTokens), postfixTokens);
     }
 }
