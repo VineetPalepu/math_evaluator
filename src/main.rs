@@ -1,8 +1,13 @@
+use std::borrow::BorrowMut;
+use std::collections::VecDeque;
+use std::str::FromStr;
+use std::thread::current;
+
 fn main()
 {
-    let tokens = tokenize("4+ 26/ (8- 2)^  4");
-    println!("{:?}", tokens);
-    println!("{:?}", infix_to_postfix(tokens));
+    let expr = "4+ 26/ (8- 2)^  4";
+    //let expr = "2 + 4";
+    ExpressionTree::from_str(expr).print_expression();
 }
 
 fn tokenize(string: &str) -> Vec<Token>
@@ -87,7 +92,7 @@ fn infix_to_postfix(infix_tokens: Vec<Token>) -> Vec<Token>
                         postfix_tokens.push(cur_token);
                     }
                 }
-            }
+            },
             Token::Operator { .. } =>
             {
                 if op_stack.is_empty() || op_stack.last().unwrap() == &Token::LSep
@@ -126,14 +131,14 @@ fn infix_to_postfix(infix_tokens: Vec<Token>) -> Vec<Token>
                                     tok => panic!("token {:?} is not an operator", tok),
                                 }
                                 .precedence()
-                            || (cur_op.precedence()
-                                == match op_stack.last().unwrap()
-                                {
-                                    Token::Operator { op } => op,
-                                    tok => panic!("token {:?} is not an operator", tok),
-                                }
-                                .precedence()
-                                && cur_op.associativity() == Associativity::Left))
+                                || (cur_op.precedence()
+                                    == match op_stack.last().unwrap()
+                                    {
+                                        Token::Operator { op } => op,
+                                        tok => panic!("token {:?} is not an operator", tok),
+                                    }
+                                    .precedence()
+                                    && cur_op.associativity() == Associativity::Left))
                         {
                             postfix_tokens.push(
                                 op_stack
@@ -144,7 +149,7 @@ fn infix_to_postfix(infix_tokens: Vec<Token>) -> Vec<Token>
                         op_stack.push(token);
                     }
                 }
-            }
+            },
         }
     }
 
@@ -190,9 +195,29 @@ enum Token
     RSep,
 }
 
+impl Token
+{
+    fn get_number(&self) -> Option<&String>
+    {
+        match self
+        {
+            Token::Number { val } => Some(val),
+            _ => None,
+        }
+    }
+
+    fn get_operator(&self) -> Option<&Operation>
+    {
+        match self
+        {
+            Token::Operator { op } => Some(op),
+            _ => None,
+        }
+    }
+}
+
 impl Operation
 {
-    /*
     fn str(&self) -> String
     {
         match self
@@ -204,7 +229,6 @@ impl Operation
             Self::Exponentiation => "^".to_string(),
         }
     }
-    */
 
     fn precedence(&self) -> i32
     {
@@ -220,10 +244,8 @@ impl Operation
     {
         match self
         {
-            Self::Addition | Self::Subtraction | Self::Multiplication | Self::Division =>
-            {
-                Associativity::Left
-            }
+            #[rustfmt::skip]
+            Self::Addition | Self::Subtraction | Self::Multiplication | Self::Division => Associativity::Left,
             Self::Exponentiation => Associativity::Right,
         }
     }
@@ -238,12 +260,9 @@ struct ExpressionTree
 
 impl ExpressionTree
 {
-    fn from_str() -> ExpressionTree
+    fn from_str(string: &str) -> ExpressionTree
     {
-        ExpressionTree {
-            token: Token::Number { val: "4".to_string() },
-            children: Vec::new(),
-        }
+        Self::from_postfix_tokens(infix_to_postfix(tokenize(string)))
     }
 
     fn from_postfix_tokens(postfix_tokens: Vec<Token>) -> ExpressionTree
@@ -254,10 +273,8 @@ impl ExpressionTree
         {
             match token
             {
-                Token::Number { .. } =>
-                {
-                    val_stack.push(ExpressionTree { token, children: Vec::new() })
-                }
+                #[rustfmt::skip]
+                Token::Number { .. } => val_stack.push(ExpressionTree { token, children: Vec::new() }),
                 Token::Operator { .. } =>
                 {
                     let num2 = val_stack.pop().expect("tried to pop value off empty stack");
@@ -265,22 +282,129 @@ impl ExpressionTree
                     let new_children = vec![num1, num2];
 
                     val_stack.push(ExpressionTree { token, children: new_children });
-                }
+                },
                 Token::LSep | Token::RSep =>
                 {
                     panic!("unexpected token for postfix expression: {:?}", token)
-                }
+                },
             }
         }
 
         assert!(val_stack.len() == 1);
         val_stack.pop().unwrap()
     }
+
+    fn print_expression(&self)
+    {
+        if self.children.is_empty()
+        {
+            self.print_token();
+        }
+        else
+        {
+            print!("( ");
+            self.children[0].print_expression();
+            self.print_token();
+            self.children[1].print_expression();
+            print!(") ");
+        }
+    }
+
+    fn print_token(&self)
+    {
+        match &self.token
+        {
+            Token::Number { val } => print!("{} ", val),
+            Token::Operator { op } => print!("{} ", op.str()),
+            _ => panic!(
+                "unexpected token encountered while printing: {:?}",
+                self.token
+            ),
+        }
+    }
+
+    
+    fn eval(&mut self)
+    {
+        self.print_expression();
+        while match self.token
+        {
+            Token::Number { .. } => true,
+            _ => false,
+        }
+        {
+            Self::evaluate_node(self.find_node());
+            self.print_expression();
+        }
+    }
+    
+    fn find_node(self: &mut Self) -> &mut ExpressionTree
+    {
+        
+        
+        self
+    }
+
+    fn evaluate_node(node: &mut ExpressionTree)
+    {
+        match &node.token
+        {
+            Token::Operator { op } => match op
+            {
+                &Operation::Addition =>
+                {
+                    let val1 = f64::from_str(node.children[0].token.get_number().unwrap()).unwrap();
+                    let val2 = f64::from_str(node.children[1].token.get_number().unwrap()).unwrap();
+
+                    node.token = Token::Number { val: (val1 + val2).to_string() };
+                    node.children.clear();
+                },
+                &Operation::Subtraction =>
+                {
+                    let val1 = f64::from_str(node.children[0].token.get_number().unwrap()).unwrap();
+                    let val2 = f64::from_str(node.children[1].token.get_number().unwrap()).unwrap();
+
+                    node.token = Token::Number { val: (val1 - val2).to_string() };
+                    node.children.clear();
+                },
+                &Operation::Multiplication =>
+                {
+                    let val1 = f64::from_str(node.children[0].token.get_number().unwrap()).unwrap();
+                    let val2 = f64::from_str(node.children[1].token.get_number().unwrap()).unwrap();
+
+                    node.token = Token::Number { val: (val1 * val2).to_string() };
+                    node.children.clear();
+                },
+                &Operation::Division =>
+                {
+                    let val1 = f64::from_str(node.children[0].token.get_number().unwrap()).unwrap();
+                    let val2 = f64::from_str(node.children[1].token.get_number().unwrap()).unwrap();
+
+                    node.token = Token::Number { val: (val1 / val2).to_string() };
+                    node.children.clear();
+                },
+                &Operation::Exponentiation =>
+                {
+                    let val1 = f64::from_str(node.children[0].token.get_number().unwrap()).unwrap();
+                    let val2 = f64::from_str(node.children[1].token.get_number().unwrap()).unwrap();
+
+                    node.token = Token::Number { val: (val1.powf(val2)).to_string() };
+                    node.children.clear();
+                },
+                _ =>
+                {},
+            },
+            _ => panic!("attempted to eval invalid token: {:?}", node.token),
+        }
+    }
+    
 }
 
 #[cfg(test)]
 mod tests
 {
+    use std::vec;
+
     use super::*;
 
     #[macro_export]
@@ -343,11 +467,9 @@ mod tests
         let postfix_tokens = create_tokens!["5", "3", "+"];
         assert_eq!(infix_to_postfix(infix_tokens), postfix_tokens);
 
-        
         let infix_tokens = create_tokens!["4", "*", "3", "+", "2", "^", "7"];
         let postfix_tokens = create_tokens!["4", "3", "*", "2", "7", "^", "+"];
         assert_eq!(infix_to_postfix(infix_tokens), postfix_tokens);
-        
     }
 
     #[test]
@@ -386,9 +508,99 @@ mod tests
                 },
             ],
         };
+
         assert_eq!(
             ExpressionTree::from_postfix_tokens(postfix_tokens),
             expression_tree
         );
+    }
+
+    #[test]
+    fn test_evaluate_node()
+    {
+        type Tree = ExpressionTree;
+        let mut expression_tree = Tree {
+            token: make_token("+"),
+            children: vec![
+                Tree {
+                    token: make_token("5"),
+                    children: vec![],
+                },
+                Tree {
+                    token: make_token("3"),
+                    children: vec![],
+                },
+            ],
+        };
+        let result = Tree {
+            token: make_token("8"),
+            children: vec![],
+        };
+        
+        Tree::evaluate_node(&mut expression_tree);
+        assert_eq!(expression_tree, result);
+
+        let tree1 = Tree {
+            token: make_token("+"),
+            children: vec![
+                Tree {
+                    token: make_token("12"),
+                    children: vec![],
+                },
+                Tree {
+                    token: make_token("^"),
+                    children: vec![
+                        Tree {
+                            token: make_token("2"),
+                            children: vec![],
+                        },
+                        Tree {
+                            token: make_token("7"),
+                            children: vec![],
+                        },
+                    ],
+                },
+            ],
+        };
+        let mut tree2 = Tree {
+            token: make_token("+"),
+            children: vec![
+                Tree {
+                    token: make_token("*"),
+                    children: vec![
+                        Tree {
+                            token: make_token("4"),
+                            children: vec![],
+                        },
+                        Tree {
+                            token: make_token("3"),
+                            children: vec![],
+                        },
+                    ],
+                },
+                Tree {
+                    token: make_token("^"),
+                    children: vec![
+                        Tree {
+                            token: make_token("2"),
+                            children: vec![],
+                        },
+                        Tree {
+                            token: make_token("7"),
+                            children: vec![],
+                        },
+                    ],
+                },
+            ],
+        };
+        
+        Tree::evaluate_node(get_mut_ref_from_tree(&mut tree2));
+
+        assert_eq!(tree1, tree2);
+    }
+
+    fn get_mut_ref_from_tree<'a>(tree: &'a mut ExpressionTree)-> &'a mut ExpressionTree
+    {
+        &mut tree.children[0]
     }
 }
