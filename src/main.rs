@@ -1,13 +1,14 @@
-use std::borrow::BorrowMut;
+use std::cell::RefCell;
 use std::collections::VecDeque;
+use std::rc::Rc;
 use std::str::FromStr;
-use std::thread::current;
 
 fn main()
 {
-    let expr = "4+ 26/ (8- 2)^  4";
+    let expr = "0004^(0000.5/(3-.1)+2)-.2^.13-.23+23.22";
+    //let expr = "4+ 26/ (8- 2)^  4";
     //let expr = "2 + 4";
-    ExpressionTree::from_str(expr).print_expression();
+    ExpressionTree::from_str(expr).eval();
 }
 
 fn tokenize(string: &str) -> Vec<Token>
@@ -23,10 +24,10 @@ fn tokenize(string: &str) -> Vec<Token>
             i += 1;
             continue;
         }
-        else if chars[i].is_numeric()
+        else if chars[i].is_numeric() || chars[i] == '.'
         {
             let mut j = i + 1;
-            while j < chars.len() && chars[j].is_numeric()
+            while j < chars.len() && (chars[j].is_numeric() || chars[j] == '.')
             {
                 j += 1;
             }
@@ -255,7 +256,31 @@ impl Operation
 struct ExpressionTree
 {
     token: Token,
-    children: Vec<ExpressionTree>,
+    children: Vec<Rc<RefCell<ExpressionTree>>>,
+}
+
+macro_rules! vec_nodes {
+    ($($i:ident),*) => {
+        vec![
+        $(
+            Rc::new(RefCell::new($i)),
+        )*
+        ]
+    };
+    ($($i:expr),*) => {
+        vec![
+        $(
+            Rc::new(RefCell::new($i)),
+        )*
+        ]
+    };
+    ($($i:expr,)*) => {
+        vec![
+        $(
+            Rc::new(RefCell::new($i)),
+        )*
+        ]
+    };
 }
 
 impl ExpressionTree
@@ -279,7 +304,7 @@ impl ExpressionTree
                 {
                     let num2 = val_stack.pop().expect("tried to pop value off empty stack");
                     let num1 = val_stack.pop().expect("tried to pop value off empty stack");
-                    let new_children = vec![num1, num2];
+                    let new_children = vec_nodes![num1, num2];
 
                     val_stack.push(ExpressionTree { token, children: new_children });
                 },
@@ -294,6 +319,12 @@ impl ExpressionTree
         val_stack.pop().unwrap()
     }
 
+    fn print(&self)
+    {
+        self.print_expression();
+        println!();
+    }
+
     fn print_expression(&self)
     {
         if self.children.is_empty()
@@ -303,9 +334,9 @@ impl ExpressionTree
         else
         {
             print!("( ");
-            self.children[0].print_expression();
+            (*self.children[0]).borrow().print_expression();
             self.print_token();
-            self.children[1].print_expression();
+            (*self.children[1]).borrow().print_expression();
             print!(") ");
         }
     }
@@ -323,81 +354,103 @@ impl ExpressionTree
         }
     }
 
-    
-    fn eval(&mut self)
+    fn eval(self)
     {
-        self.print_expression();
-        while match self.token
+        let tree: Rc<RefCell<ExpressionTree>> = Rc::new(RefCell::new(self));
+        tree.borrow().print();
+
+        while let Token::Operator { .. } = tree.borrow().token
         {
-            Token::Number { .. } => true,
-            _ => false,
+            Self::evaluate_node(Self::find_node(tree.clone()));
+            tree.borrow().print();
         }
-        {
-            Self::evaluate_node(self.find_node());
-            self.print_expression();
-        }
-    }
-    
-    fn find_node(self: &mut Self) -> &mut ExpressionTree
-    {
-        
-        
-        self
     }
 
-    fn evaluate_node(node: &mut ExpressionTree)
+    fn find_node(root: Rc<RefCell<ExpressionTree>>) -> Rc<RefCell<ExpressionTree>>
     {
+        let mut node_queue: VecDeque<Rc<RefCell<ExpressionTree>>> = VecDeque::new();
+        let mut selected_node: Rc<RefCell<ExpressionTree>> = root.clone();
+
+        node_queue.push_back(root);
+        while !node_queue.is_empty()
+        {
+            let current_node = node_queue.pop_front().unwrap();
+
+            if let Token::Operator { .. } = current_node.borrow().token
+            {
+                node_queue.push_back(current_node.borrow().children[0].clone());
+                node_queue.push_back(current_node.borrow().children[1].clone());
+
+                selected_node = current_node.clone();
+            };
+        }
+
+        selected_node
+    }
+
+    fn evaluate_node(node: Rc<RefCell<ExpressionTree>>)
+    {
+        let mut node = (*node).borrow_mut();
         match &node.token
         {
             Token::Operator { op } => match op
             {
-                &Operation::Addition =>
+                Operation::Addition =>
                 {
-                    let val1 = f64::from_str(node.children[0].token.get_number().unwrap()).unwrap();
-                    let val2 = f64::from_str(node.children[1].token.get_number().unwrap()).unwrap();
+                    let val1 = f64::from_str(node.children[0].borrow().token.get_number().unwrap())
+                        .unwrap();
+                    let val2 = f64::from_str(node.children[1].borrow().token.get_number().unwrap())
+                        .unwrap();
 
                     node.token = Token::Number { val: (val1 + val2).to_string() };
                     node.children.clear();
                 },
-                &Operation::Subtraction =>
+                Operation::Subtraction =>
                 {
-                    let val1 = f64::from_str(node.children[0].token.get_number().unwrap()).unwrap();
-                    let val2 = f64::from_str(node.children[1].token.get_number().unwrap()).unwrap();
+                    let val1 = f64::from_str(node.children[0].borrow().token.get_number().unwrap())
+                        .unwrap();
+                    let val2 = f64::from_str(node.children[1].borrow().token.get_number().unwrap())
+                        .unwrap();
 
                     node.token = Token::Number { val: (val1 - val2).to_string() };
                     node.children.clear();
                 },
-                &Operation::Multiplication =>
+                Operation::Multiplication =>
                 {
-                    let val1 = f64::from_str(node.children[0].token.get_number().unwrap()).unwrap();
-                    let val2 = f64::from_str(node.children[1].token.get_number().unwrap()).unwrap();
+                    let val1 = f64::from_str(node.children[0].borrow().token.get_number().unwrap())
+                        .unwrap();
+                    let val2 = f64::from_str(node.children[1].borrow().token.get_number().unwrap())
+                        .unwrap();
 
                     node.token = Token::Number { val: (val1 * val2).to_string() };
                     node.children.clear();
                 },
-                &Operation::Division =>
+                Operation::Division =>
                 {
-                    let val1 = f64::from_str(node.children[0].token.get_number().unwrap()).unwrap();
-                    let val2 = f64::from_str(node.children[1].token.get_number().unwrap()).unwrap();
+                    let val1 = f64::from_str(node.children[0].borrow().token.get_number().unwrap())
+                        .unwrap();
+                    let val2 = f64::from_str(node.children[1].borrow().token.get_number().unwrap())
+                        .unwrap();
 
                     node.token = Token::Number { val: (val1 / val2).to_string() };
                     node.children.clear();
                 },
-                &Operation::Exponentiation =>
+                Operation::Exponentiation =>
                 {
-                    let val1 = f64::from_str(node.children[0].token.get_number().unwrap()).unwrap();
-                    let val2 = f64::from_str(node.children[1].token.get_number().unwrap()).unwrap();
+                    let val1 = f64::from_str(node.children[0].borrow().token.get_number().unwrap())
+                        .unwrap();
+                    let val2 = f64::from_str(node.children[1].borrow().token.get_number().unwrap())
+                        .unwrap();
 
-                    node.token = Token::Number { val: (val1.powf(val2)).to_string() };
+                    node.token = Token::Number {
+                        val: (val1.powf(val2)).to_string(),
+                    };
                     node.children.clear();
                 },
-                _ =>
-                {},
             },
             _ => panic!("attempted to eval invalid token: {:?}", node.token),
         }
     }
-    
 }
 
 #[cfg(test)]
@@ -452,8 +505,19 @@ mod tests
         let test1 = tokenize("4(5-2)^(3*(5-6))");
         let test2 = tokenize("4 (5-   2   )^(   3 *(    5-  6)  )");
 
-        assert_eq!(tokens, test1);
-        assert_eq!(tokens, test2);
+        assert_eq!(test1, tokens);
+        assert_eq!(test2, tokens);
+
+        let tokens = create_tokens!["0004.", "+", ".23"];
+        let test1 = tokenize("0004. +   .23");
+        let test2 = tokenize("0004.+.23");
+
+        assert_eq!(test1, tokens);
+        assert_eq!(test2, tokens);
+
+        let tokens = create_tokens!["0004", "^", "(", "0000.5", "/", "(", "3", "-", ".1", ")", "+", "2", ")", "-", ".2", "^", ".13", "-", ".23", "+", "23.22"];
+        let test1 = tokenize("0004^(0000.5/(3-.1)+2)-.2^.13-.23+23.22");
+        let test2 = tokenize("0004^   (  0000.5/(3 -.1)    +2)-   .2 ^ .13 -.23+23.22");
     }
 
     #[test]
@@ -470,6 +534,10 @@ mod tests
         let infix_tokens = create_tokens!["4", "*", "3", "+", "2", "^", "7"];
         let postfix_tokens = create_tokens!["4", "3", "*", "2", "7", "^", "+"];
         assert_eq!(infix_to_postfix(infix_tokens), postfix_tokens);
+
+        let infix_tokens = create_tokens!["0004", "^", "(", "0000.5", "/", "(", "3", "-", ".1", ")", "+", "2", ")", "-", ".2", "^", ".13", "-", ".23", "+", "23.22"];
+        let postfix_tokens = create_tokens![""]; // TODO
+        assert_eq!(infix_to_postfix(infix_tokens), postfix_tokens);
     }
 
     #[test]
@@ -479,30 +547,30 @@ mod tests
         type Tree = ExpressionTree;
         let expression_tree = Tree {
             token: make_token("+"),
-            children: vec![
+            children: vec_nodes![
                 Tree {
                     token: make_token("*"),
-                    children: vec![
+                    children: vec_nodes![
                         Tree {
                             token: make_token("4"),
-                            children: vec![],
+                            children: vec_nodes![],
                         },
                         Tree {
                             token: make_token("3"),
-                            children: vec![],
+                            children: vec_nodes![],
                         },
                     ],
                 },
                 Tree {
                     token: make_token("^"),
-                    children: vec![
+                    children: vec_nodes![
                         Tree {
                             token: make_token("2"),
-                            children: vec![],
+                            children: vec_nodes![],
                         },
                         Tree {
                             token: make_token("7"),
-                            children: vec![],
+                            children: vec_nodes![],
                         },
                     ],
                 },
@@ -519,88 +587,125 @@ mod tests
     fn test_evaluate_node()
     {
         type Tree = ExpressionTree;
-        let mut expression_tree = Tree {
+        let expression_tree = Tree {
             token: make_token("+"),
-            children: vec![
+            children: vec_nodes![
                 Tree {
                     token: make_token("5"),
-                    children: vec![],
+                    children: vec_nodes![],
                 },
                 Tree {
                     token: make_token("3"),
-                    children: vec![],
+                    children: vec_nodes![],
                 },
             ],
         };
         let result = Tree {
             token: make_token("8"),
-            children: vec![],
+            children: vec_nodes![],
         };
-        
-        Tree::evaluate_node(&mut expression_tree);
-        assert_eq!(expression_tree, result);
+
+        let ptr = Rc::new(RefCell::new(expression_tree));
+        Tree::evaluate_node(ptr.clone());
+        assert_eq!(*ptr.borrow(), result);
 
         let tree1 = Tree {
             token: make_token("+"),
-            children: vec![
+            children: vec_nodes![
                 Tree {
                     token: make_token("12"),
-                    children: vec![],
+                    children: vec_nodes![],
                 },
                 Tree {
                     token: make_token("^"),
-                    children: vec![
+                    children: vec_nodes![
                         Tree {
                             token: make_token("2"),
-                            children: vec![],
+                            children: vec_nodes![],
                         },
                         Tree {
                             token: make_token("7"),
-                            children: vec![],
+                            children: vec_nodes![],
                         },
                     ],
                 },
             ],
         };
-        let mut tree2 = Tree {
+        let tree2 = Tree {
             token: make_token("+"),
-            children: vec![
+            children: vec_nodes![
                 Tree {
                     token: make_token("*"),
-                    children: vec![
+                    children: vec_nodes![
                         Tree {
                             token: make_token("4"),
-                            children: vec![],
+                            children: vec_nodes![],
                         },
                         Tree {
                             token: make_token("3"),
-                            children: vec![],
+                            children: vec_nodes![],
                         },
                     ],
                 },
                 Tree {
                     token: make_token("^"),
-                    children: vec![
+                    children: vec_nodes![
                         Tree {
                             token: make_token("2"),
-                            children: vec![],
+                            children: vec_nodes![],
                         },
                         Tree {
                             token: make_token("7"),
-                            children: vec![],
+                            children: vec_nodes![],
                         },
                     ],
                 },
             ],
         };
-        
-        Tree::evaluate_node(get_mut_ref_from_tree(&mut tree2));
+
+        Tree::evaluate_node(tree2.children[0].clone());
 
         assert_eq!(tree1, tree2);
     }
 
-    fn get_mut_ref_from_tree<'a>(tree: &'a mut ExpressionTree)-> &'a mut ExpressionTree
+    #[test]
+    fn test_find_node()
     {
-        &mut tree.children[0]
+        type Tree = ExpressionTree;
+
+        let expression_tree = Tree {
+            token: make_token("+"),
+            children: vec_nodes![
+                Tree {
+                    token: make_token("*"),
+                    children: vec_nodes![
+                        Tree {
+                            token: make_token("4"),
+                            children: vec_nodes![],
+                        },
+                        Tree {
+                            token: make_token("3"),
+                            children: vec_nodes![],
+                        },
+                    ],
+                },
+                Tree {
+                    token: make_token("^"),
+                    children: vec_nodes![
+                        Tree {
+                            token: make_token("2"),
+                            children: vec_nodes![],
+                        },
+                        Tree {
+                            token: make_token("7"),
+                            children: vec_nodes![],
+                        },
+                    ],
+                },
+            ],
+        };
+
+        let root = Rc::new(RefCell::new(expression_tree));
+        assert_eq!(Tree::find_node(root.clone()), root.borrow().children[1]);
     }
 }
