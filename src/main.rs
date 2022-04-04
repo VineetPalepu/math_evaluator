@@ -5,9 +5,11 @@ use std::str::FromStr;
 
 fn main()
 {
-    let expr = "0004^(0000.5/(3-.1)+2)-.2^.13-.23+23.22";
+    //let expr = "0004^(0000.5/(3-.1)+2)-.2^.13-.23+23.22";
+    let expr = "2 ^ (3 + 4)";
     //let expr = "4+ 26/ (8- 2)^  4";
     //let expr = "2 + 4";
+    println!("{:?}", tokenize(expr));
     ExpressionTree::from_str(expr).eval();
 }
 
@@ -125,21 +127,21 @@ fn infix_to_postfix(infix_tokens: Vec<Token>) -> Vec<Token>
                     else
                     {
                         while !op_stack.is_empty()
-                            && (cur_op.precedence()
+                            && cur_op.precedence()
                                 < match op_stack.last().unwrap()
                                 {
                                     Token::Operator { op } => op,
                                     tok => panic!("token {:?} is not an operator", tok),
                                 }
                                 .precedence()
-                                || (cur_op.precedence()
-                                    == match op_stack.last().unwrap()
-                                    {
-                                        Token::Operator { op } => op,
-                                        tok => panic!("token {:?} is not an operator", tok),
-                                    }
-                                    .precedence()
-                                    && cur_op.associativity() == Associativity::Left))
+                            && (cur_op.precedence()
+                                == match op_stack.last().unwrap()
+                                {
+                                    Token::Operator { op } => op,
+                                    tok => panic!("token {:?} is not an operator", tok),
+                                }
+                                .precedence()
+                                && cur_op.associativity() == Associativity::Left)
                         {
                             postfix_tokens.push(
                                 op_stack
@@ -515,7 +517,10 @@ mod tests
         assert_eq!(test1, tokens);
         assert_eq!(test2, tokens);
 
-        let tokens = create_tokens!["0004", "^", "(", "0000.5", "/", "(", "3", "-", ".1", ")", "+", "2", ")", "-", ".2", "^", ".13", "-", ".23", "+", "23.22"];
+        let tokens = create_tokens![
+            "0004", "^", "(", "0000.5", "/", "(", "3", "-", ".1", ")", "+", "2", ")", "-", ".2",
+            "^", ".13", "-", ".23", "+", "23.22"
+        ];
         let test1 = tokenize("0004^(0000.5/(3-.1)+2)-.2^.13-.23+23.22");
         let test2 = tokenize("0004^   (  0000.5/(3 -.1)    +2)-   .2 ^ .13 -.23+23.22");
     }
@@ -535,8 +540,8 @@ mod tests
         let postfix_tokens = create_tokens!["4", "3", "*", "2", "7", "^", "+"];
         assert_eq!(infix_to_postfix(infix_tokens), postfix_tokens);
 
-        let infix_tokens = create_tokens!["0004", "^", "(", "0000.5", "/", "(", "3", "-", ".1", ")", "+", "2", ")", "-", ".2", "^", ".13", "-", ".23", "+", "23.22"];
-        let postfix_tokens = create_tokens![""]; // TODO
+        let infix_tokens = create_tokens!["2", "^",  "(", "3", "+", "4", ")"];
+        let postfix_tokens = create_tokens!["2", "3", "4", "+", "^"];
         assert_eq!(infix_to_postfix(infix_tokens), postfix_tokens);
     }
 
