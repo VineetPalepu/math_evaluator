@@ -108,9 +108,11 @@ impl ExpressionTree
         let tree: Rc<RefCell<ExpressionTree>> = Rc::new(RefCell::new(self));
         tree.borrow().print();
 
-        while let Token::Operator { .. } = tree.borrow().token
+        while matches!(&tree.borrow().token, Token::Operator { .. })
+        //while let Token::Operator { .. } = &tree.borrow().token
         {
-            Self::evaluate_node(Self::find_node(tree.clone()));
+            let node_to_eval = Self::find_node(tree.clone());
+            Self::evaluate_node(node_to_eval);
             tree.borrow().print();
         }
 
@@ -140,9 +142,9 @@ impl ExpressionTree
         selected_node
     }
 
-    pub fn evaluate_node(node: Rc<RefCell<ExpressionTree>>)
+    pub fn evaluate_node(node1: Rc<RefCell<ExpressionTree>>)
     {
-        let mut node = (*node).borrow_mut();
+        let mut node = node1.borrow_mut(); // already borrowed BorrowMutError error here
         match &node.token
         {
             Token::Operator { op } => match op

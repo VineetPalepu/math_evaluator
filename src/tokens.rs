@@ -321,6 +321,10 @@ mod tests
         let postfix_tokens = create_tokens!["5", "3", "+"];
         assert_eq!(shunting_yard(infix_tokens), postfix_tokens);
 
+        let infix_tokens = create_tokens!["2", "*", "4", "+", "6"];
+        let postfix_tokens = create_tokens!["2", "4", "*", "6", "+"];
+        assert_eq!(shunting_yard(infix_tokens), postfix_tokens);
+
         let infix_tokens = create_tokens!["4", "*", "3", "+", "2", "^", "7"];
         let postfix_tokens = create_tokens!["4", "3", "*", "2", "7", "^", "+"];
         assert_eq!(shunting_yard(infix_tokens), postfix_tokens);
