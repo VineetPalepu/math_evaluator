@@ -103,7 +103,7 @@ impl ExpressionTree
         }
     }
 
-    pub fn eval(self)
+    pub fn eval(self) -> f64
     {
         let tree: Rc<RefCell<ExpressionTree>> = Rc::new(RefCell::new(self));
         tree.borrow().print();
@@ -113,6 +113,9 @@ impl ExpressionTree
             Self::evaluate_node(Self::find_node(tree.clone()));
             tree.borrow().print();
         }
+
+        let result = tree.borrow().token.get_number().expect("token was no number").clone();
+        f64::from_str(&result).expect(format!("error converting token data to number: {}", result).as_str())
     }
 
     pub fn find_node(root: Rc<RefCell<ExpressionTree>>) -> Rc<RefCell<ExpressionTree>>
