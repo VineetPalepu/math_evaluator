@@ -116,8 +116,14 @@ impl ExpressionTree
             tree.borrow().print();
         }
 
-        let result = tree.borrow().token.get_number().expect("token was no number").clone();
-        f64::from_str(&result).expect(format!("error converting token data to number: {}", result).as_str())
+        let result = tree
+            .borrow()
+            .token
+            .get_number()
+            .expect("token was no number")
+            .clone();
+        f64::from_str(&result)
+            .expect(format!("error converting token data to number: {}", result).as_str())
     }
 
     pub fn find_node(root: Rc<RefCell<ExpressionTree>>) -> Rc<RefCell<ExpressionTree>>
@@ -144,7 +150,7 @@ impl ExpressionTree
 
     pub fn evaluate_node(node1: Rc<RefCell<ExpressionTree>>)
     {
-        let mut node = node1.borrow_mut(); // already borrowed BorrowMutError error here
+        let mut node = node1.borrow_mut();
         match &node.token
         {
             Token::Operator { op } => match op

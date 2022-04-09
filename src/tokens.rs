@@ -173,60 +173,29 @@ pub fn shunting_yard(infix_tokens: Vec<Token>) -> Vec<Token>
             },
             Token::Operator { .. } =>
             {
-                if op_stack.is_empty() || op_stack.last().unwrap() == &Token::LSep
+                let cur_op = match token
                 {
-                    op_stack.push(token)
-                }
-                else
+                    Token::Operator { ref op } => op,
+                    _ => panic!("token {:?} is not an operator", token),
+                };
+
+                while !op_stack.is_empty() && op_stack.last().unwrap() != &Token::LSep
                 {
-                    let cur_op = match token
+                    let stack_op = op_stack.last().unwrap().get_operator().expect(
+                        format!("not an operator: {:?}", op_stack.last().unwrap()).as_str(),
+                    );
+                    if stack_op.precedence() > cur_op.precedence()
+                        || (stack_op.precedence() == cur_op.precedence()
+                            && cur_op.associativity() == Associativity::Left)
                     {
-                        Token::Operator { ref op } => op,
-                        _ => panic!("token {:?} is not an operator", token),
-                    };
-
-                    let stack_op = match op_stack
-                        .last()
-                        .expect("tried to pop operator off empty opStack")
-                    {
-                        Token::Operator { op } => op,
-                        _ => panic!("token {:?} is not an operator", token),
-                    };
-
-                    if (cur_op.precedence() > stack_op.precedence())
-                        || (cur_op.precedence() == stack_op.precedence()
-                            && cur_op.associativity() == Associativity::Right)
-                    {
-                        op_stack.push(token)
+                        postfix_tokens.push(op_stack.pop().unwrap())
                     }
                     else
                     {
-                        while !op_stack.is_empty()
-                            && cur_op.precedence()
-                                < match op_stack.last().unwrap()
-                                {
-                                    Token::Operator { op } => op,
-                                    tok => panic!("token {:?} is not an operator", tok),
-                                }
-                                .precedence()
-                            && (cur_op.precedence()
-                                == match op_stack.last().unwrap()
-                                {
-                                    Token::Operator { op } => op,
-                                    tok => panic!("token {:?} is not an operator", tok),
-                                }
-                                .precedence()
-                                && cur_op.associativity() == Associativity::Left)
-                        {
-                            postfix_tokens.push(
-                                op_stack
-                                    .pop()
-                                    .expect("tried to pop operator off empty opStack"),
-                            );
-                        }
-                        op_stack.push(token);
+                        break;
                     }
                 }
+                op_stack.push(token);
             },
         }
     }
