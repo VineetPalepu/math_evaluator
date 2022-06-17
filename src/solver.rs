@@ -105,9 +105,10 @@ impl ExpressionTree
 
     fn print_latex(&self)
     {
-        print!("\\[");
+        //print!("\\[");
         self.print_expression_latex();
-        println!("\\]\\\\");
+        //print!("\\]\\\\");
+        println!();
     }
 
     fn print_expression_latex(&self)
