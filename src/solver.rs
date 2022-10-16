@@ -210,10 +210,9 @@ impl ExpressionTree
             .borrow()
             .token
             .get_number()
-            .expect("token was not a number")
-            .clone();
+            .expect("error getting number from token");
 
-        f64::from_str(&result).expect(&format!("error converting token data to number: {result}"))
+        result
     }
 
     pub fn find_node(root: Rc<RefCell<ExpressionTree>>) -> Rc<RefCell<ExpressionTree>>
@@ -247,50 +246,40 @@ impl ExpressionTree
             {
                 Operation::Addition =>
                 {
-                    let val1 = f64::from_str(node.children[0].borrow().token.get_number().unwrap())
-                        .unwrap();
-                    let val2 = f64::from_str(node.children[1].borrow().token.get_number().unwrap())
-                        .unwrap();
+                    let val1 = node.children[0].borrow().token.get_number().unwrap();
+                    let val2 = node.children[1].borrow().token.get_number().unwrap();
 
                     node.token = Token::Number { val: (val1 + val2).to_string() };
                     node.children.clear();
                 },
                 Operation::Subtraction =>
                 {
-                    let val1 = f64::from_str(node.children[0].borrow().token.get_number().unwrap())
-                        .unwrap();
-                    let val2 = f64::from_str(node.children[1].borrow().token.get_number().unwrap())
-                        .unwrap();
+                    let val1 = node.children[0].borrow().token.get_number().unwrap();
+                    let val2 = node.children[1].borrow().token.get_number().unwrap();
 
                     node.token = Token::Number { val: (val1 - val2).to_string() };
                     node.children.clear();
                 },
                 Operation::Multiplication =>
                 {
-                    let val1 = f64::from_str(node.children[0].borrow().token.get_number().unwrap())
-                        .unwrap();
-                    let val2 = f64::from_str(node.children[1].borrow().token.get_number().unwrap())
-                        .unwrap();
+                    let val1 = node.children[0].borrow().token.get_number().unwrap();
+                    let val2 = node.children[1].borrow().token.get_number().unwrap();
 
                     node.token = Token::Number { val: (val1 * val2).to_string() };
                     node.children.clear();
                 },
                 Operation::Division =>
                 {
-                    let val1 = f64::from_str(node.children[0].borrow().token.get_number().unwrap())
-                        .unwrap();
-                    let val2 = f64::from_str(node.children[1].borrow().token.get_number().unwrap())
-                        .unwrap();
+                    let val1 = node.children[0].borrow().token.get_number().unwrap();
+                    let val2 = node.children[1].borrow().token.get_number().unwrap();
 
                     node.token = Token::Number { val: (val1 / val2).to_string() };
                     node.children.clear();
                 },
                 Operation::Exponentiation =>
                 {
-                    let val1 = f64::from_str(node.children[0].borrow().token.get_number().unwrap())
-                        .unwrap();
-                    let val2 = f64::from_str(node.children[1].borrow().token.get_number().unwrap())
-                        .unwrap();
+                    let val1 = node.children[0].borrow().token.get_number().unwrap();
+                    let val2 = node.children[1].borrow().token.get_number().unwrap();
 
                     node.token = Token::Number {
                         val: (val1.powf(val2)).to_string(),
