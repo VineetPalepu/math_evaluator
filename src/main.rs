@@ -12,12 +12,13 @@ fn main()
     }
     else
     {
-        math_evaluator::generate_expression(1000)
+        "2+2".to_string()
+        //math_evaluator::generate_expression(10)
     };
 
-    println!("{}", expr);
+    println!("expression: {}", expr);
 
-    math_evaluator::evaluate(&expr);
+    println!("result: {}", math_evaluator::evaluate(&expr));
 
     // TESTING
     /*

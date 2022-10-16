@@ -6,10 +6,10 @@ use std::str::FromStr;
 use crate::tokens::*;
 
 #[derive(Debug, PartialEq)]
-pub struct ExpressionTree
+pub struct ExpressionTree // Rename to Expression?
 {
-    pub token: Token,
-    pub children: Vec<Rc<RefCell<ExpressionTree>>>,
+    pub token: Token, // Rename to operator?
+    pub children: Vec<Rc<RefCell<ExpressionTree>>>, // Rename to operands?
 }
 
 #[macro_export]
@@ -166,23 +166,51 @@ impl ExpressionTree
         }
     }
 
-    pub fn eval(self) -> f64
+    pub fn eval(self) -> f64 {
+        
+        let mut tree = Rc::new(RefCell::new(self));
+
+        Self::eval_helper(&mut tree)
+    }
+
+    fn eval_helper(tree_node: &mut Rc<RefCell<ExpressionTree>>) -> f64
+    {
+        let children = &mut tree_node.borrow_mut().children;
+
+        if children.is_empty()
+        {
+            //return f64::from_str(tree_node.borrow().token.get_number().expect(""));
+            return 1.0;
+        }
+
+        let c1 = &mut children[0];
+        let r1 = Self::eval_helper(c1);
+
+        let c2 = &mut children[1];
+        let r2 = Self::eval_helper(c2);
+
+
+        
+        todo!();
+    }
+
+    pub fn simplify(self) -> f64
     {
         let tree: Rc<RefCell<ExpressionTree>> = Rc::new(RefCell::new(self));
-        tree.borrow().print();
+        //tree.borrow().print();
 
         while matches!(&tree.borrow().token, Token::Operator { .. })
         {
             let node_to_eval = Self::find_node(tree.clone());
             Self::evaluate_node(node_to_eval);
-            tree.borrow().print();
+            //tree.borrow().print();
         }
 
         let result = tree
             .borrow()
             .token
             .get_number()
-            .expect("token was no number")
+            .expect("token was not a number")
             .clone();
 
         f64::from_str(&result).expect(&format!("error converting token data to number: {result}"))
@@ -210,9 +238,9 @@ impl ExpressionTree
         selected_node
     }
 
-    pub fn evaluate_node(node1: Rc<RefCell<ExpressionTree>>)
+    pub fn evaluate_node(node: Rc<RefCell<ExpressionTree>>)
     {
-        let mut node = node1.borrow_mut();
+        let mut node = node.borrow_mut();
         match &node.token
         {
             Token::Operator { op } => match op
