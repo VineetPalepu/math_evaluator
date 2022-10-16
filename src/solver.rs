@@ -112,58 +112,53 @@ impl ExpressionTree
     }
 
     fn print_expression_latex(&self)
-    {        
+    {
         match &self.token
         {
             Token::Number { val } => print!("{}", val),
-            Token::Operator { op } =>
+            Token::Operator { op } => match op
             {
-                match op
-        {
-            Operation::Addition =>
-            {
-                print!("{{");
-                self.children[0].borrow().print_expression_latex();
-                print!("}}+{{");
-                self.children[1].borrow().print_expression_latex();
-                print!("}}");
-
+                Operation::Addition =>
+                {
+                    print!("{{");
+                    self.children[0].borrow().print_expression_latex();
+                    print!("}}+{{");
+                    self.children[1].borrow().print_expression_latex();
+                    print!("}}");
+                },
+                Operation::Subtraction =>
+                {
+                    print!("{{");
+                    self.children[0].borrow().print_expression_latex();
+                    print!("}}-{{");
+                    self.children[1].borrow().print_expression_latex();
+                    print!("}}");
+                },
+                Operation::Multiplication =>
+                {
+                    print!("{{");
+                    self.children[0].borrow().print_expression_latex();
+                    print!("}}\\cdot{{");
+                    self.children[1].borrow().print_expression_latex();
+                    print!("}}");
+                },
+                Operation::Division =>
+                {
+                    print!("\\frac{{");
+                    self.children[0].borrow().print_expression_latex();
+                    print!("}}{{");
+                    self.children[1].borrow().print_expression_latex();
+                    print!("}}");
+                },
+                Operation::Exponentiation =>
+                {
+                    print!("{{");
+                    self.children[0].borrow().print_expression_latex();
+                    print!("}}^{{");
+                    self.children[1].borrow().print_expression_latex();
+                    print!("}}");
+                },
             },
-            Operation::Subtraction =>
-            {
-                print!("{{");
-                self.children[0].borrow().print_expression_latex();
-                print!("}}-{{");
-                self.children[1].borrow().print_expression_latex();
-                print!("}}");
-
-            },
-            Operation::Multiplication =>
-            {
-                print!("{{");
-                self.children[0].borrow().print_expression_latex();
-                print!("}}\\cdot{{");
-                self.children[1].borrow().print_expression_latex();
-                print!("}}");
-            },
-            Operation::Division =>
-            {
-                print!("\\frac{{");
-                self.children[0].borrow().print_expression_latex();
-                print!("}}{{");
-                self.children[1].borrow().print_expression_latex();
-                print!("}}");
-            },
-            Operation::Exponentiation =>
-            {
-                print!("{{");
-                self.children[0].borrow().print_expression_latex();
-                print!("}}^{{");
-                self.children[1].borrow().print_expression_latex();
-                print!("}}");
-            },
-        }
-            }
             _ => panic!(
                 "unexpected token encountered while printing: {:?}",
                 self.token
@@ -174,14 +169,13 @@ impl ExpressionTree
     pub fn eval(self) -> f64
     {
         let tree: Rc<RefCell<ExpressionTree>> = Rc::new(RefCell::new(self));
-        tree.borrow().print_latex();
+        tree.borrow().print();
 
         while matches!(&tree.borrow().token, Token::Operator { .. })
-        //while let Token::Operator { .. } = &tree.borrow().token
         {
             let node_to_eval = Self::find_node(tree.clone());
             Self::evaluate_node(node_to_eval);
-            tree.borrow().print_latex();
+            tree.borrow().print();
         }
 
         let result = tree
@@ -190,8 +184,8 @@ impl ExpressionTree
             .get_number()
             .expect("token was no number")
             .clone();
-        f64::from_str(&result)
-            .expect(format!("error converting token data to number: {}", result).as_str())
+
+        f64::from_str(&result).expect(&format!("error converting token data to number: {result}"))
     }
 
     pub fn find_node(root: Rc<RefCell<ExpressionTree>>) -> Rc<RefCell<ExpressionTree>>
