@@ -10,7 +10,7 @@ pub fn evaluate(expr: &str) -> f64
     let infix_tokens = tokenize(expr);
     let postfix_tokens = shunting_yard(infix_tokens);
 
-    let expr_tree = ExpressionTree::from_postfix_tokens(postfix_tokens);
+    let expr_tree = Expression::from_postfix_tokens(postfix_tokens);
 
     // TODO: add parameter to switch between simplify (show work) and eval (just get final result)
     let r1 = expr_tree.eval();
