@@ -168,17 +168,15 @@ impl ExpressionTree
         }
     }
 
-    pub fn eval(self) -> f64
+    pub fn eval(&self) -> f64
     {
-        let tree = Rc::new(RefCell::new(self));
+        // let tree = Rc::new(RefCell::new(self));
 
-        Self::eval_helper(&tree)
+        Self::eval_helper(self)
     }
 
-    fn eval_helper(tree_node: &Rc<RefCell<ExpressionTree>>) -> f64
+    fn eval_helper(tree_node: &ExpressionTree) -> f64
     {
-        let mut tree_node = tree_node.borrow_mut();
-
         if tree_node.children.is_empty()
         {
             return tree_node
@@ -187,13 +185,13 @@ impl ExpressionTree
                 .expect("error getting number from token");
         }
 
-        let children = &mut tree_node.children;
+        let children = &tree_node.children;
 
-        let c1 = &children[0];
-        let r1 = Self::eval_helper(c1);
+        let c1 = children[0].borrow();
+        let r1 = Self::eval_helper(&c1);
 
-        let c2 = &children[1];
-        let r2 = Self::eval_helper(c2);
+        let c2 = children[1].borrow();
+        let r2 = Self::eval_helper(&c2);
 
         let op = tree_node
             .token
