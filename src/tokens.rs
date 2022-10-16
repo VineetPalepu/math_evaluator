@@ -25,7 +25,8 @@ impl Token
         {
             Token::Number { val } =>
             {
-                let val = f64::from_str(val).expect("token of type Token::Number had an invalid value");
+                let val =
+                    f64::from_str(val).expect("token of type Token::Number had an invalid value");
 
                 Some(val)
             },
@@ -50,7 +51,7 @@ pub enum Associativity
     Right,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Operation
 {
     Addition,
