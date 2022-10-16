@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::VecDeque;
+use std::f32::consts::E;
 use std::rc::Rc;
 use std::str::FromStr;
 
@@ -189,9 +190,21 @@ impl ExpressionTree
         let c2 = &mut children[1];
         let r2 = Self::eval_helper(c2);
 
-
+        
         
         todo!();
+    }
+
+    fn eval_binary_op(val1: f64, op: &Operation, val2: f64) -> f64
+    {
+        match op
+        {
+            Operation::Addition => val1 + val2,
+            Operation::Subtraction => val1 - val2,
+            Operation::Multiplication => val1 * val2,
+            Operation::Division => val1 / val2,
+            Operation::Exponentiation => val1.powf(val2),
+        }
     }
 
     pub fn simplify(self) -> f64
@@ -240,54 +253,19 @@ impl ExpressionTree
     pub fn evaluate_node(node: Rc<RefCell<ExpressionTree>>)
     {
         let mut node = node.borrow_mut();
-        match &node.token
+
+        let val1 = node.children[0].borrow().token.get_number().unwrap();
+        let val2 = node.children[1].borrow().token.get_number().unwrap();
+
+        if let Token::Operator { op } = &node.token
         {
-            Token::Operator { op } => match op
-            {
-                Operation::Addition =>
-                {
-                    let val1 = node.children[0].borrow().token.get_number().unwrap();
-                    let val2 = node.children[1].borrow().token.get_number().unwrap();
-
-                    node.token = Token::Number { val: (val1 + val2).to_string() };
-                    node.children.clear();
-                },
-                Operation::Subtraction =>
-                {
-                    let val1 = node.children[0].borrow().token.get_number().unwrap();
-                    let val2 = node.children[1].borrow().token.get_number().unwrap();
-
-                    node.token = Token::Number { val: (val1 - val2).to_string() };
-                    node.children.clear();
-                },
-                Operation::Multiplication =>
-                {
-                    let val1 = node.children[0].borrow().token.get_number().unwrap();
-                    let val2 = node.children[1].borrow().token.get_number().unwrap();
-
-                    node.token = Token::Number { val: (val1 * val2).to_string() };
-                    node.children.clear();
-                },
-                Operation::Division =>
-                {
-                    let val1 = node.children[0].borrow().token.get_number().unwrap();
-                    let val2 = node.children[1].borrow().token.get_number().unwrap();
-
-                    node.token = Token::Number { val: (val1 / val2).to_string() };
-                    node.children.clear();
-                },
-                Operation::Exponentiation =>
-                {
-                    let val1 = node.children[0].borrow().token.get_number().unwrap();
-                    let val2 = node.children[1].borrow().token.get_number().unwrap();
-
-                    node.token = Token::Number {
-                        val: (val1.powf(val2)).to_string(),
-                    };
-                    node.children.clear();
-                },
-            },
-            _ => panic!("attempted to eval invalid token: {:?}", node.token),
+            let val = Self::eval_binary_op(val1, op, val2).to_string();
+            node.token = Token::Number { val };
+            node.children.clear();
+        }
+        else
+        {
+            panic!("attempted to eval invalid token: {:?}", node.token);
         }
     }
 }
