@@ -13,8 +13,12 @@ pub fn evaluate(expr: &str) -> f64
     let expr_tree = ExpressionTree::from_postfix_tokens(postfix_tokens);
 
     // TODO: add parameter to switch between simplify (show work) and eval (just get final result)
-    // expr_tree.simplify()
-    expr_tree.eval()
+    let r1 = expr_tree.eval();
+    //let r2 = expr_tree.simplify();
+
+    //assert_eq!(r1, r2);
+
+    r1
 }
 
 pub fn generate_expression(terms: usize) -> String

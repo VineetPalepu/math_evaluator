@@ -1,7 +1,5 @@
 use std::env;
 
-use math_evaluator::generate_expression;
-
 fn main()
 {
     // MAIN
@@ -12,8 +10,8 @@ fn main()
     }
     else
     {
-        "2+2".to_string()
-        //math_evaluator::generate_expression(10)
+        //"2+2".to_string()
+        math_evaluator::generate_expression(10)
     };
 
     println!("expression: {}", expr);

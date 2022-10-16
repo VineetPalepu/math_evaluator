@@ -169,12 +169,12 @@ impl ExpressionTree
 
     pub fn eval(self) -> f64 {
         
-        let mut tree = Rc::new(RefCell::new(self));
+        let tree = Rc::new(RefCell::new(self));
 
-        Self::eval_helper(&mut tree)
+        Self::eval_helper(&tree)
     }
 
-    fn eval_helper(tree_node: &mut Rc<RefCell<ExpressionTree>>) -> f64
+    fn eval_helper(tree_node: &Rc<RefCell<ExpressionTree>>) -> f64
     {
         let mut tree_node = tree_node.borrow_mut();
 
@@ -185,10 +185,10 @@ impl ExpressionTree
 
         let children = &mut tree_node.children;
 
-        let c1 = &mut children[0];
+        let c1 = &children[0];
         let r1 = Self::eval_helper(c1);
 
-        let c2 = &mut children[1];
+        let c2 = &children[1];
         let r2 = Self::eval_helper(c2);
 
         let op = tree_node.token.get_operator().expect(&format!("error getting operator from token: {:?}", &tree_node.token)).clone();
