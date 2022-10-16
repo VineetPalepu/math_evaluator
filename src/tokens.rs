@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 #[derive(Debug, PartialEq)]
 pub enum Token
 {
@@ -17,11 +19,16 @@ pub enum Token
 
 impl Token
 {
-    pub fn get_number(&self) -> Option<&String>
+    pub fn get_number(&self) -> Option<f64>
     {
         match self
         {
-            Token::Number { val } => Some(val),
+            Token::Number { val } =>
+            {
+                let val = f64::from_str(val).expect("token of type Token::Number had an invalid value");
+
+                Some(val)
+            },
             _ => None,
         }
     }

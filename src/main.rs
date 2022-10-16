@@ -12,7 +12,7 @@ fn main()
     }
     else
     {
-        math_evaluator::generate_expression(1000)
+        math_evaluator::generate_expression(10)
     };
 
     println!("{}", expr);
