@@ -50,7 +50,7 @@ pub enum Associativity
     Right,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Operation
 {
     Addition,

@@ -176,13 +176,14 @@ impl ExpressionTree
 
     fn eval_helper(tree_node: &mut Rc<RefCell<ExpressionTree>>) -> f64
     {
-        let children = &mut tree_node.borrow_mut().children;
+        let mut tree_node = tree_node.borrow_mut();
 
-        if children.is_empty()
+        if tree_node.children.is_empty()
         {
-            //return f64::from_str(tree_node.borrow().token.get_number().expect(""));
-            return 1.0;
+            return tree_node.token.get_number().expect("error getting number from token");
         }
+
+        let children = &mut tree_node.children;
 
         let c1 = &mut children[0];
         let r1 = Self::eval_helper(c1);
@@ -190,12 +191,12 @@ impl ExpressionTree
         let c2 = &mut children[1];
         let r2 = Self::eval_helper(c2);
 
-        
-        
-        todo!();
+        let op = tree_node.token.get_operator().expect(&format!("error getting operator from token: {:?}", &tree_node.token)).clone();
+
+        Self::eval_binary_op(r1, op, r2)
     }
 
-    fn eval_binary_op(val1: f64, op: &Operation, val2: f64) -> f64
+    fn eval_binary_op(val1: f64, op: Operation, val2: f64) -> f64
     {
         match op
         {
@@ -259,7 +260,7 @@ impl ExpressionTree
 
         if let Token::Operator { op } = &node.token
         {
-            let val = Self::eval_binary_op(val1, op, val2).to_string();
+            let val = Self::eval_binary_op(val1, op.clone(), val2).to_string();
             node.token = Token::Number { val };
             node.children.clear();
         }
