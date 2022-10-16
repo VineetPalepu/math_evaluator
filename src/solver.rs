@@ -7,9 +7,10 @@ use std::str::FromStr;
 use crate::tokens::*;
 
 #[derive(Debug, PartialEq)]
-pub struct ExpressionTree // Rename to Expression?
+pub struct ExpressionTree
+// Rename to Expression?
 {
-    pub token: Token, // Rename to operator?
+    pub token: Token,                               // Rename to operator?
     pub children: Vec<Rc<RefCell<ExpressionTree>>>, // Rename to operands?
 }
 
@@ -167,8 +168,8 @@ impl ExpressionTree
         }
     }
 
-    pub fn eval(self) -> f64 {
-        
+    pub fn eval(self) -> f64
+    {
         let tree = Rc::new(RefCell::new(self));
 
         Self::eval_helper(&tree)
@@ -180,7 +181,10 @@ impl ExpressionTree
 
         if tree_node.children.is_empty()
         {
-            return tree_node.token.get_number().expect("error getting number from token");
+            return tree_node
+                .token
+                .get_number()
+                .expect("error getting number from token");
         }
 
         let children = &mut tree_node.children;
@@ -191,7 +195,14 @@ impl ExpressionTree
         let c2 = &children[1];
         let r2 = Self::eval_helper(c2);
 
-        let op = tree_node.token.get_operator().expect(&format!("error getting operator from token: {:?}", &tree_node.token)).clone();
+        let op = tree_node
+            .token
+            .get_operator()
+            .expect(&format!(
+                "error getting operator from token: {:?}",
+                &tree_node.token
+            ))
+            .clone();
 
         Self::eval_binary_op(r1, op, r2)
     }
